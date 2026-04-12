@@ -16,7 +16,8 @@ changed, not the entire file again.
 
 This isn't compression. It's elimination. The agent never reads files it
 doesn't need, never greps through irrelevant matches, never re-reads what it
-already saw.
+already saw, and never pays full price for a file it edited — re-reads return
+only the unified diff against what the agent already has in context.
 
 No LLM involved in indexing — tree-sitter is a deterministic AST parser, so
 the index is fast, free to build, and requires zero maintenance.
@@ -70,6 +71,12 @@ codedrift update
 | `codedrift_resolve` | Read (full file) | Source code + callers + importers + tests + git history for one symbol |
 | `codedrift_overview` | Reading multiple files | Module map, entry points, test summary (~300 tokens) |
 | `codedrift_read` | Read | Full file on first access; unified diff on re-reads |
+
+---
+
+## Session-aware reads — zero re-read waste
+
+`codedrift_read` tracks every file the agent reads during a session. The first access returns the full file; every subsequent access returns either a one-line "unchanged" notice or a unified diff of only the lines that changed. The design treats the LLM's context window as the cache — since the full file is already there from the first read, re-reads only need to transmit the delta.
 
 ---
 
