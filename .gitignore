@@ -2,10 +2,6 @@
 .claude/
 CLAUDE.md
 
-# Implementation source
-codedrift/
-benchmark.py
-
 # Runtime data
 .codecodedrift/
 
