@@ -13,6 +13,10 @@ lookups. Use CodeDrift tools **before** native file-read tools.
 
 ## Tool priority (use in this order)
 
+0. `codedrift_memory <question>` — BEFORE EVERYTHING. Check if this task was
+   solved before. If a match is returned, use that context set directly and
+   skip steps 1–2 entirely.
+
 1. `codedrift_search <keywords>` — FIRST CHOICE. FTS5 fuzzy search across all
    symbol names, signatures, file paths, and call-site context lines.
    Use instead of Grep or Glob.
@@ -29,6 +33,7 @@ lookups. Use CodeDrift tools **before** native file-read tools.
 
 ## Rules
 
+- ALWAYS call `codedrift_memory` first, before any other tool.
 - ALWAYS try `codedrift_search` before Grep or Glob.
 - ALWAYS try `codedrift_resolve` before reading full files.
 - After editing files, run `codedrift update` to refresh the index.

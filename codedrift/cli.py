@@ -194,6 +194,127 @@ def install_skill(path):
     click.echo(f"Rules written to: {out}")
 
 
+# ── memory ───────────────────────────────────────────────────────────────────
+
+@main.group()
+def memory():
+    """Session memory: store and recall proven context sets across sessions."""
+    pass
+
+
+@memory.command("record")
+@click.option("--path", default=".", help="Project root.")
+@click.option("--session", default=None, help="Path to a specific JSONL file (defaults to latest).")
+@click.option("--outcome", default="success", show_default=True, help="success or error.")
+def memory_record(path, session, outcome):
+    """Parse the last session log and store its context in memory."""
+    from .memory import SessionMemory
+    from .session_parser import find_latest_session, parse_session
+
+    project_dir = str(Path(path).resolve())
+    jsonl_path = session or find_latest_session(project_dir)
+    if not jsonl_path:
+        click.echo("No session log found for this project.", err=True)
+        sys.exit(1)
+
+    parsed = parse_session(str(jsonl_path))
+    if not parsed["task_text"]:
+        click.echo("Could not extract a task description from the session log.", err=True)
+        sys.exit(1)
+
+    db = _get_db(project_dir)
+    try:
+        mem = SessionMemory(db)
+        row_id = mem.record(
+            task_text=parsed["task_text"],
+            context_files=parsed["files_read"],
+            context_symbols=parsed["symbols_resolved"],
+            outcome=outcome,
+            session_id=parsed["session_id"],
+        )
+    finally:
+        db.close()
+
+    task_preview = parsed["task_text"][:80]
+    click.echo(f'Recorded session #{row_id}: "{task_preview}"')
+    click.echo(f"  files: {len(parsed['files_read'])}  symbols: {len(parsed['symbols_resolved'])}")
+
+
+@memory.command("recall")
+@click.argument("query", nargs=-1, required=True)
+@click.option("--path", default=".", help="Project root.")
+@click.option("--threshold", default=0.80, show_default=True, type=float)
+def memory_recall(query, path, threshold):
+    """Find the closest past session for a given query."""
+    from .memory import SessionMemory
+
+    q = " ".join(query)
+    project_dir = str(Path(path).resolve())
+    db = _get_db(project_dir)
+    try:
+        mem = SessionMemory(db)
+        match = mem.recall(q, threshold=threshold)
+    finally:
+        db.close()
+
+    if not match:
+        click.echo(f'No match above {threshold} for: "{q}"')
+        return
+
+    click.echo(f"Match (similarity={match['similarity']:.2f}):")
+    click.echo(f"  Task: {match['task_text']}")
+    click.echo(f"  Files ({len(match['context_files'])}):")
+    for f in match["context_files"]:
+        click.echo(f"    {f}")
+    if match["context_symbols"]:
+        click.echo(f"  Symbols ({len(match['context_symbols'])}):")
+        for s in match["context_symbols"]:
+            click.echo(f"    {s}")
+
+
+@memory.command("list")
+@click.option("--path", default=".", help="Project root.")
+def memory_list(path):
+    """Show all stored sessions."""
+    import datetime
+    import json as _json
+
+    project_dir = str(Path(path).resolve())
+    db = _get_db(project_dir)
+    try:
+        rows = db.list_session_memory()
+    finally:
+        db.close()
+
+    if not rows:
+        click.echo("No sessions stored.")
+        return
+
+    for row in rows:
+        ts = datetime.datetime.fromtimestamp(row["created_at"]).strftime("%Y-%m-%d %H:%M")
+        n_files = len(_json.loads(row["context_files"]))
+        n_syms = len(_json.loads(row["context_symbols"]))
+        click.echo(
+            f"#{row['id']:>3}  {ts}  [{row['outcome']}]  "
+            f"files={n_files}  syms={n_syms}  "
+            f"{row['task_text'][:70]}"
+        )
+
+
+@memory.command("clear")
+@click.option("--path", default=".", help="Project root.")
+@click.confirmation_option(prompt="Clear all stored session memory?")
+def memory_clear(path):
+    """Delete all stored session memory."""
+    project_dir = str(Path(path).resolve())
+    db = _get_db(project_dir)
+    try:
+        db.clear_session_memory()
+    finally:
+        db.close()
+    click.echo("Session memory cleared.")
+
+
 # ── mcp ───────────────────────────────────────────────────────────────────────
 
 @main.command()
