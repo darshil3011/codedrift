@@ -1,6 +1,13 @@
 # CodeDrift
 
-Your coding agent spends 90% of its tokens finding code, not writing it.
+Your coding agent spends 90% of its tokens finding code, not writing it. Reduce your token usage by 50x with CodeDrift !
+
+<p align="center">
+  <img src="assets/comparison.svg" alt="Token usage: without vs with CodeDrift" width="680"/>
+</p>
+
+> Numbers are typical for a mid-size Python codebase session. Run `benchmark.py` against your own sessions to measure exactly.
+
 
 Every prompt triggers the same loop — grep, glob, read a file, realize it's
 wrong, read another, try again. A single question burns 60K tokens and 23
@@ -21,6 +28,7 @@ only the unified diff against what the agent already has in context.
 
 No LLM involved in indexing — tree-sitter is a deterministic AST parser, so
 the index is fast, free to build, and requires zero maintenance.
+
 
 ---
 

@@ -4,6 +4,7 @@ import sqlite3
 import time
 from pathlib import Path
 from typing import Any, List, Optional
+import json
 
 
 _SCHEMA = """
@@ -99,6 +100,19 @@ CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(name);
 CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file);
 CREATE INDEX IF NOT EXISTS idx_calls_name   ON calls(symbol_name);
 CREATE INDEX IF NOT EXISTS idx_imports_name ON imports(symbol_name);
+
+CREATE TABLE IF NOT EXISTS session_memory (
+    id INTEGER PRIMARY KEY,
+    task_text TEXT NOT NULL,
+    task_embedding BLOB NOT NULL,
+    context_files TEXT NOT NULL,
+    context_symbols TEXT NOT NULL,
+    tokens_used INTEGER,
+    outcome TEXT DEFAULT 'success',
+    confidence REAL DEFAULT 1.0,
+    created_at REAL NOT NULL,
+    session_id TEXT
+);
 """
 
 
@@ -310,3 +324,43 @@ class CodeDriftDB:
     def list_files(self) -> List[str]:
         rows = self.execute("SELECT file FROM file_meta ORDER BY file")
         return [r["file"] for r in rows]
+
+    # ── session memory ────────────────────────────────────────────────────────
+
+    def insert_session_memory(
+        self,
+        task_text: str,
+        embedding_bytes: bytes,
+        context_files_json: str,
+        context_symbols_json: str,
+        tokens_used: Optional[int],
+        outcome: str,
+        session_id: Optional[str],
+    ) -> int:
+        with self._conn:
+            cur = self._conn.execute(
+                """INSERT INTO session_memory
+                   (task_text, task_embedding, context_files, context_symbols,
+                    tokens_used, outcome, created_at, session_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (task_text, embedding_bytes, context_files_json, context_symbols_json,
+                 tokens_used, outcome, time.time(), session_id),
+            )
+        return cur.lastrowid
+
+    def get_all_session_embeddings(self) -> List[sqlite3.Row]:
+        return self.execute(
+            "SELECT id, task_text, task_embedding, context_files, "
+            "context_symbols, confidence, session_id FROM session_memory"
+        )
+
+    def list_session_memory(self) -> List[sqlite3.Row]:
+        return self.execute(
+            "SELECT id, task_text, context_files, context_symbols, "
+            "tokens_used, outcome, confidence, created_at, session_id "
+            "FROM session_memory ORDER BY created_at DESC"
+        )
+
+    def clear_session_memory(self):
+        with self._conn:
+            self._conn.execute("DELETE FROM session_memory")
