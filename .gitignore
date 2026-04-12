@@ -1,0 +1,20 @@
+# Claude
+.claude/
+CLAUDE.md
+
+# Implementation source
+codedrift/
+benchmark.py
+
+# Runtime data
+.codecodedrift/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
