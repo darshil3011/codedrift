@@ -1,6 +1,6 @@
-# CodeDrift - An MCP that reduces your AI Agent token usage drastically
+# CodeDrift
 
-Your coding agent spends 90% of its tokens finding code, not writing it.
+Your coding agent spends 90% of its tokens finding code, not writing it. Reduce your token usage by 50x with CodeDrift !
 
 <p align="center">
   <img src="assets/comparison.svg" alt="Token usage: without vs with CodeDrift" width="680"/>
