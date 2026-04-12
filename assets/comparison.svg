@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 200" width="680" height="200">
+
+  <!-- ── Background ── -->
+  <rect width="680" height="200" fill="#161b22" rx="8"/>
+
+  <!-- ── Title ── -->
+  <text x="340" y="27"
+    fill="#c9d1d9"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="12.5"
+    text-anchor="middle"
+    font-weight="600">Token cost per session — same task, same output</text>
+
+  <!-- ══════════════════════ WITHOUT ROW ════════════════════════ -->
+
+  <text x="178" y="70"
+    fill="#8b949e"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="11"
+    text-anchor="end">without</text>
+
+  <!-- navigation overhead: 55K / 65K × 430px = 364px -->
+  <rect x="185" y="55" width="364" height="24" fill="#f85149" rx="3"/>
+
+  <!-- actual work: 10K / 65K × 430px = 66px -->
+  <rect x="549" y="55" width="66" height="24" fill="#3fb950" rx="3"/>
+
+  <text x="622" y="71"
+    fill="#c9d1d9"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="11">~65K</text>
+
+  <text x="622" y="84"
+    fill="#6e7681"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="9">23 calls</text>
+
+  <!-- ══════════════════════ WITH ROW ════════════════════════ -->
+
+  <text x="178" y="120"
+    fill="#8b949e"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="11"
+    text-anchor="end">with</text>
+
+  <!-- navigation: 2K / 65K × 430px = 13px -->
+  <rect x="185" y="105" width="13" height="24" fill="#f85149" rx="3"/>
+
+  <!-- actual work: 8K / 65K × 430px = 53px -->
+  <rect x="198" y="105" width="53" height="24" fill="#3fb950" rx="3"/>
+
+  <text x="258" y="121"
+    fill="#c9d1d9"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="11">~10K</text>
+
+  <text x="258" y="134"
+    fill="#6e7681"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="9">4 calls</text>
+
+  <!-- ── Divider ── -->
+  <line x1="185" y1="148" x2="625" y2="148" stroke="#30363d" stroke-width="1"/>
+
+  <!-- ── Savings callout ── -->
+  <text x="340" y="168"
+    fill="#3fb950"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="13"
+    text-anchor="middle"
+    font-weight="bold">85% fewer tokens · 83% fewer tool calls</text>
+
+  <!-- ── Legend ── -->
+  <rect x="196" y="180" width="10" height="10" fill="#f85149" rx="1"/>
+  <text x="210" y="189"
+    fill="#6e7681"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="10">grep / glob / read overhead</text>
+
+  <rect x="390" y="180" width="10" height="10" fill="#3fb950" rx="1"/>
+  <text x="404" y="189"
+    fill="#6e7681"
+    font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-size="10">actual writing &amp; edits</text>
+
+</svg>

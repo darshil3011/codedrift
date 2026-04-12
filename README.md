@@ -22,6 +22,12 @@ only the unified diff against what the agent already has in context.
 No LLM involved in indexing — tree-sitter is a deterministic AST parser, so
 the index is fast, free to build, and requires zero maintenance.
 
+<p align="center">
+  <img src="assets/comparison.svg" alt="Token usage: without vs with CodeDrift" width="680"/>
+</p>
+
+> Numbers are typical for a mid-size Python codebase session. Run `benchmark.py` against your own sessions to measure exactly.
+
 ---
 
 ## Quick setup
