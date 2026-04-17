@@ -88,6 +88,38 @@ codedrift update
 
 ---
 
+## Cross-session memory
+
+CodeDrift can remember which files and symbols were useful for a given task and surface them again when a similar task comes up in a future session.
+
+After finishing a session, record it:
+
+```bash
+codedrift memory record          # parses the latest Claude Code session log
+codedrift memory record --outcome error  # mark it as a failed attempt
+```
+
+Before starting work on something similar, check for a past match:
+
+```bash
+codedrift memory recall "add authentication middleware"
+```
+
+If a past session scores above the similarity threshold (default 0.80), it returns the task description, the files that were read, and the symbols that were resolved — giving the agent a warm start instead of re-discovering context from scratch.
+
+```bash
+codedrift memory list            # show all stored sessions
+codedrift memory clear           # wipe memory
+```
+
+Memory uses vector embeddings (`all-MiniLM-L6-v2`) stored locally in the project's SQLite index. It requires the optional `memory` extra:
+
+```bash
+pip install "codedrift[memory]"
+```
+
+---
+
 ## Measure token savings
 
 ```bash
@@ -112,6 +144,10 @@ codedrift status          # index stats (files, symbols, languages)
 codedrift install-hook    # git post-commit hook for auto-update
 codedrift install-skill   # append tool-priority rules to CLAUDE.md
 codedrift mcp             # start MCP server (used by claude mcp add)
+codedrift memory record   # store last session's context in memory
+codedrift memory recall   # find closest past session for a query
+codedrift memory list     # show all stored sessions
+codedrift memory clear    # wipe session memory
 ```
 
 ---
