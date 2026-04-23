@@ -126,7 +126,7 @@ def run_mcp_server(project_dir: str):
                         "query": {"type": "string", "description": "Current task or question"},
                         "threshold": {
                             "type": "number",
-                            "default": 0.80,
+                            "default": 0.40,
                             "description": "Minimum similarity score (0-1) to accept a match",
                         },
                     },
@@ -174,7 +174,7 @@ def run_mcp_server(project_dir: str):
 
             elif name == "codedrift_memory":
                 query = arguments["query"]
-                threshold = float(arguments.get("threshold", 0.80))
+                threshold = float(arguments.get("threshold", 0.40))
                 try:
                     mem = _get_memory(db)
                     match = mem.recall(query, threshold=threshold)

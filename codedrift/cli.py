@@ -243,8 +243,9 @@ def memory_record(path, session, outcome):
 @memory.command("recall")
 @click.argument("query", nargs=-1, required=True)
 @click.option("--path", default=".", help="Project root.")
-@click.option("--threshold", default=0.80, show_default=True, type=float)
-def memory_recall(query, path, threshold):
+@click.option("--threshold", default=0.40, show_default=True, type=float)
+@click.option("--verbose", "-v", is_flag=True, help="Show all sessions with their scores.")
+def memory_recall(query, path, threshold, verbose):
     """Find the closest past session for a given query."""
     from .memory import SessionMemory
 
@@ -253,12 +254,28 @@ def memory_recall(query, path, threshold):
     db = _get_db(project_dir)
     try:
         mem = SessionMemory(db)
-        match = mem.recall(q, threshold=threshold)
+        if verbose:
+            candidates = mem.recall_all(q)
+        else:
+            match = mem.recall(q, threshold=threshold)
     finally:
         db.close()
 
+    if verbose:
+        if not candidates:
+            click.echo("No sessions stored.")
+            return
+        click.echo(f"All sessions ranked by similarity to: \"{q}\"")
+        click.echo(f"{'Score':>6}  {'Task'}")
+        click.echo("-" * 60)
+        for c in candidates:
+            marker = " *" if c["similarity"] >= threshold else ""
+            click.echo(f"  {c['similarity']:.4f}{marker}  {c['task_text'][:70]}")
+        return
+
     if not match:
         click.echo(f'No match above {threshold} for: "{q}"')
+        click.echo(f'Tip: run with --verbose to see actual scores.')
         return
 
     click.echo(f"Match (similarity={match['similarity']:.2f}):")

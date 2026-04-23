@@ -97,7 +97,13 @@ Before starting work on something similar, check for a past match:
 codedrift memory recall "add authentication middleware"
 ```
 
-If a past session scores above the similarity threshold (default 0.80), it returns the task description, the files that were read, and the symbols that were resolved — giving the agent a warm start instead of re-discovering context from scratch.
+If a past session scores above the similarity threshold (default 0.40), it returns the task description, the files that were read, and the symbols that were resolved — giving the agent a warm start instead of re-discovering context from scratch.
+
+Use `--verbose` (or `-v`) to see all stored sessions ranked by similarity score, regardless of threshold — useful for tuning:
+
+```bash
+codedrift memory recall "add authentication middleware" --verbose
+```
 
 ```bash
 codedrift memory list            # show all stored sessions
