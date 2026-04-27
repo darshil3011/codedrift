@@ -1,6 +1,31 @@
-# CodeDrift
+<div align="center">
 
-Your coding agent spends 90% of its tokens finding code, not writing it. Reduce your token usage by 50x with CodeDrift !
+<pre>
+ ██████╗ ██████╗ ██████╗ ███████╗██████╗ ██████╗ ██╗███████╗████████╗
+██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗██║██╔════╝╚══██╔══╝
+██║     ██║   ██║██║  ██║█████╗  ██║  ██║██████╔╝██║█████╗     ██║   
+██║     ██║   ██║██║  ██║██╔══╝  ██║  ██║██╔══██╗██║██╔══╝     ██║   
+╚██████╗╚██████╔╝██████╔╝███████╗██████╔╝██║  ██║██║██║        ██║   
+ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝        ╚═╝  
+</pre>
+
+**Your coding agent spends 90% of its tokens finding code, not writing it.**  
+Reduce token usage by **50x** with CodeDrift.
+
+[![GitHub Stars](https://img.shields.io/github/stars/darshil3011/codedrift?style=for-the-badge&logo=github&color=gold&labelColor=1a1a2e&label=%E2%AD%90%20Star%20this%20repo)](https://github.com/darshil3011/codedrift/stargazers)&nbsp;
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-darshil3011-0a66c2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/darshil3011)
+
+<br/>
+
+[![Quick Setup](https://img.shields.io/badge/Quick_Setup-2ea44f?style=flat-square)](#quick-setup)&nbsp;
+[![AST Token Reduction](https://img.shields.io/badge/AST_Token_Reduction-0969da?style=flat-square)](#ast-based-token-reduction)&nbsp;
+[![Session-aware Reads](https://img.shields.io/badge/Session--aware_Reads-d29922?style=flat-square)](#session-aware-reads--zero-re-read-waste)&nbsp;
+[![Cross-session Memory](https://img.shields.io/badge/Cross--session_Memory-8250df?style=flat-square)](#cross-session-memory)&nbsp;
+[![PII Redaction](https://img.shields.io/badge/PII_Redaction-cf222e?style=flat-square)](#pii-redaction)
+
+</div>
+
+---
 
 <p align="center">
   <img src="assets/comparison.svg" alt="Token usage: without vs with CodeDrift" width="680"/>
@@ -79,6 +104,14 @@ codedrift update
 | `codedrift_resolve` | Read (full file) | Source code + callers + importers + tests + git history for one symbol |
 | `codedrift_overview` | Reading multiple files | Module map, entry points, test summary (~300 tokens) |
 | `codedrift_read` | Read | Full file on first access; unified diff on re-reads |
+
+---
+
+## AST-based token reduction
+
+CodeDrift uses [tree-sitter](https://tree-sitter.github.io) to parse your codebase into a structured symbol index — functions, classes, imports, and call sites — rather than storing raw file text. When the agent queries for a symbol, it gets back only the relevant definition and its context, not an entire file.
+
+This means the agent never pays for boilerplate it doesn't need. A 2,000-line module with one relevant function costs the same as a 10-line file — only the symbol travels over the wire.
 
 ---
 
