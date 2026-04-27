@@ -10,6 +10,7 @@ from .resolver import resolve
 from .overview import overview
 from .savings import TokenSavingsLedger, file_tokens
 from .memory import SessionMemory
+from . import redactor as _redactor
 
 _DRIFT_DIR = ".codecodedrift"
 _DB_NAME = "index.db"
@@ -168,6 +169,7 @@ def run_mcp_server(project_dir: str):
                 full_path = str(Path(project_dir) / file_path)
                 _ledger.next_turn()
                 text = _ledger.read_file(full_path)
+                text = _redactor.redact(text, full_path, project_dir)
                 naive = file_tokens(full_path)
                 saved = _savings.record("codedrift_read", text, naive)
                 text += _savings.format_footer(saved)

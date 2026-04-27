@@ -194,6 +194,93 @@ def install_skill(path):
     click.echo(f"Rules written to: {out}")
 
 
+# ── redact ───────────────────────────────────────────────────────────────────
+
+@main.group()
+def redact():
+    """PII redaction: prevent secrets from reaching the LLM."""
+    pass
+
+
+@redact.command("enable")
+@click.option("--path", default=".", help="Project root.")
+def redact_enable(path):
+    """Enable PII redaction for this project."""
+    from .redactor import load_config, save_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    cfg.enabled = True
+    save_config(project_dir, cfg)
+    click.echo("PII redaction enabled.")
+
+
+@redact.command("disable")
+@click.option("--path", default=".", help="Project root.")
+def redact_disable(path):
+    """Disable PII redaction."""
+    from .redactor import load_config, save_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    cfg.enabled = False
+    save_config(project_dir, cfg)
+    click.echo("PII redaction disabled.")
+
+
+@redact.command("status")
+@click.option("--path", default=".", help="Project root.")
+def redact_status(path):
+    """Show current redaction configuration."""
+    from .redactor import load_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    click.echo(f"Enabled:         {cfg.enabled}")
+    click.echo(f"Entity types:    {', '.join(cfg.entity_types)}")
+    click.echo(f"Allow patterns:  {', '.join(cfg.allow_patterns) or '(none)'}")
+    click.echo(f"Env passthrough: {', '.join(cfg.env_passthrough_keys)}")
+
+
+@redact.command("allow")
+@click.argument("pattern")
+@click.option("--path", default=".", help="Project root.")
+def redact_allow(pattern, path):
+    """Add a regex pattern to the allow-list (never redacted)."""
+    from .redactor import load_config, save_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    if pattern not in cfg.allow_patterns:
+        cfg.allow_patterns.append(pattern)
+        save_config(project_dir, cfg)
+    click.echo(f"Allow-listed: {pattern}")
+
+
+@redact.command("ignore")
+@click.argument("entity_type")
+@click.option("--path", default=".", help="Project root.")
+def redact_ignore(entity_type, path):
+    """Stop redacting an entity type (e.g. private_person)."""
+    from .redactor import load_config, save_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    if entity_type in cfg.entity_types:
+        cfg.entity_types.remove(entity_type)
+        save_config(project_dir, cfg)
+    click.echo(f"Ignored: {entity_type}")
+
+
+@redact.command("watch")
+@click.argument("entity_type")
+@click.option("--path", default=".", help="Project root.")
+def redact_watch(entity_type, path):
+    """Add an entity type back to detection."""
+    from .redactor import load_config, save_config
+    project_dir = str(Path(path).resolve())
+    cfg = load_config(project_dir)
+    if entity_type not in cfg.entity_types:
+        cfg.entity_types.append(entity_type)
+        save_config(project_dir, cfg)
+    click.echo(f"Watching: {entity_type}")
+
+
 # ── memory ───────────────────────────────────────────────────────────────────
 
 @main.group()

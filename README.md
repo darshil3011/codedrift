@@ -118,6 +118,91 @@ pip install "codedrift[memory]"
 
 ---
 
+## PII redaction
+
+CodeDrift can strip sensitive values from file content before it reaches the LLM. It uses [openai/privacy-filter](https://huggingface.co/openai/privacy-filter) — a 1.5B parameter bidirectional token classifier that runs locally via ONNX. No data leaves your machine.
+
+When enabled, `codedrift_read` passes each string literal's source line through the model. If PII is detected, only the string value is replaced in-place — the rest of the file is untouched.
+
+**Before / after example:**
+
+```python
+# Before
+def send_data():
+    token   = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ123456"
+    email   = "john.smith@company.com"
+    db_pass = "super$ecret99"
+    requests.post("https://api.example.com", headers={"Authorization": token})
+
+# After
+def send_data():
+    token   = "[REDACTED:SECRET]"
+    email   = "[REDACTED:EMAIL]"
+    db_pass = "[REDACTED:SECRET]"
+    requests.post("https://api.example.com", headers={"Authorization": token})
+```
+
+`.env` files are handled separately — all values are redacted line-by-line without running the model, except keys you explicitly allow through.
+
+### Setup
+
+```bash
+pip install "codedrift[redact]"
+codedrift redact enable
+```
+
+The model (~917 MB, ONNX q4) is downloaded from Hugging Face on first use and cached locally.
+
+### What gets redacted
+
+| Entity type | Examples | Redacted as |
+|---|---|---|
+| `secret` | API keys, passwords, tokens, private keys | `[REDACTED:SECRET]` |
+| `private_email` | `john@company.com` | `[REDACTED:EMAIL]` |
+| `account_number` | Bank account numbers, card numbers | `[REDACTED:ACCOUNT_NUMBER]` |
+| `private_person` | Full names | `[REDACTED:PERSON]` |
+| `private_phone` | Phone numbers | `[REDACTED:PHONE]` |
+| `private_url` | Personal or authenticated URLs | `[REDACTED:URL]` |
+| `private_address` | Street addresses | `[REDACTED:ADDRESS]` |
+| `private_date` | Dates of birth, personal dates | `[REDACTED:DATE]` |
+
+By default only `secret`, `private_email`, and `account_number` are active. Enable others with `codedrift redact watch <entity_type>`.
+
+Interpolated strings (`f"..."`, JS template literals) are skipped — they contain variable references, not static values.
+
+### Configuration
+
+Config is stored in `.codecodedrift/redact.json`:
+
+```json
+{
+  "enabled": true,
+  "entity_types": ["secret", "private_email", "account_number"],
+  "allow_patterns": ["test@example.com", "localhost"],
+  "env_passthrough_keys": ["NODE_ENV", "PORT", "HOST", "DEBUG", "APP_ENV", "LOG_LEVEL"]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `enabled` | bool | Master switch. `false` by default — no overhead until you opt in. |
+| `entity_types` | list of strings | Which entity types to redact. Any subset of the 8 types above. |
+| `allow_patterns` | list of regex strings | Values matching any pattern are never redacted, even if the model flags them. Useful for test fixtures and known-safe placeholders. |
+| `env_passthrough_keys` | list of strings | `.env` keys whose values are passed through unchanged. Defaults cover common non-secret keys. |
+
+### CLI
+
+```bash
+codedrift redact enable                   # turn on redaction for this project
+codedrift redact disable                  # turn off
+codedrift redact status                   # show current config
+codedrift redact allow "test@example.com" # never redact this value
+codedrift redact ignore private_person    # stop redacting names
+codedrift redact watch private_person     # re-enable name redaction
+```
+
+---
+
 ## Measure token savings
 
 ```bash
