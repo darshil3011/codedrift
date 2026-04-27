@@ -12,15 +12,16 @@
 **Your coding agent spends 90% of its tokens finding code, not writing it.**  
 Reduce token usage by **50x** with CodeDrift.
 
-[![GitHub Stars](https://img.shields.io/github/stars/darshil3011/codedrift?style=for-the-badge&logo=github&color=gold&labelColor=1a1a2e&label=%E2%AD%90%20Star%20this%20repo)](https://github.com/darshil3011/codedrift/stargazers)
+[![GitHub Stars](https://img.shields.io/github/stars/darshil3011/codedrift?style=for-the-badge&logo=github&color=gold&labelColor=1a1a2e&label=%E2%AD%90%20Star%20this%20repo)](https://github.com/darshil3011/codedrift/stargazers)&nbsp;
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-darshil3011-0a66c2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/darshil3011)
 
 <br/>
 
-[![Quick Setup](https://img.shields.io/badge/Quick_Setup-2ea44f?style=flat-square)](https://github.com/darshil3011/codedrift#quick-setup)&nbsp;
-[![AST Token Reduction](https://img.shields.io/badge/AST_Token_Reduction-0969da?style=flat-square)](https://github.com/darshil3011/codedrift#ast-based-token-reduction)&nbsp;
-[![Session-aware Reads](https://img.shields.io/badge/Session--aware_Reads-d29922?style=flat-square)](https://github.com/darshil3011/codedrift#session-aware-reads--zero-re-read-waste)&nbsp;
-[![Cross-session Memory](https://img.shields.io/badge/Cross--session_Memory-8250df?style=flat-square)](https://github.com/darshil3011/codedrift#cross-session-memory)&nbsp;
-[![PII Redaction](https://img.shields.io/badge/PII_Redaction-cf222e?style=flat-square)](https://github.com/darshil3011/codedrift#pii-redaction)
+[![Quick Setup](https://img.shields.io/badge/Quick_Setup-2ea44f?style=flat-square)](#quick-setup)&nbsp;
+[![AST Token Reduction](https://img.shields.io/badge/AST_Token_Reduction-0969da?style=flat-square)](#ast-based-token-reduction)&nbsp;
+[![Session-aware Reads](https://img.shields.io/badge/Session--aware_Reads-d29922?style=flat-square)](#session-aware-reads--zero-re-read-waste)&nbsp;
+[![Cross-session Memory](https://img.shields.io/badge/Cross--session_Memory-8250df?style=flat-square)](#cross-session-memory)&nbsp;
+[![PII Redaction](https://img.shields.io/badge/PII_Redaction-cf222e?style=flat-square)](#pii-redaction)
 
 </div>
 
