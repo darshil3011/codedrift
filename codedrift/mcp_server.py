@@ -10,6 +10,7 @@ from .resolver import resolve
 from .overview import overview
 from .savings import TokenSavingsLedger, file_tokens
 from .memory import SessionMemory
+from . import redactor as _redactor
 
 _DRIFT_DIR = ".codecodedrift"
 _DB_NAME = "index.db"
@@ -126,7 +127,7 @@ def run_mcp_server(project_dir: str):
                         "query": {"type": "string", "description": "Current task or question"},
                         "threshold": {
                             "type": "number",
-                            "default": 0.80,
+                            "default": 0.40,
                             "description": "Minimum similarity score (0-1) to accept a match",
                         },
                     },
@@ -168,13 +169,14 @@ def run_mcp_server(project_dir: str):
                 full_path = str(Path(project_dir) / file_path)
                 _ledger.next_turn()
                 text = _ledger.read_file(full_path)
+                text = _redactor.redact(text, full_path, project_dir)
                 naive = file_tokens(full_path)
                 saved = _savings.record("codedrift_read", text, naive)
                 text += _savings.format_footer(saved)
 
             elif name == "codedrift_memory":
                 query = arguments["query"]
-                threshold = float(arguments.get("threshold", 0.80))
+                threshold = float(arguments.get("threshold", 0.40))
                 try:
                     mem = _get_memory(db)
                     match = mem.recall(query, threshold=threshold)

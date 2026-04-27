@@ -60,38 +60,47 @@ class SessionMemory:
             session_id=session_id,
         )
 
-    def recall(self, query: str, threshold: float = 0.80) -> Optional[dict]:
+    def recall(self, query: str, threshold: float = 0.40) -> Optional[dict]:
         """
         Return the closest past session if similarity >= threshold, else None.
 
         Result keys: task_text, context_files, context_symbols,
                      confidence, similarity, session_id.
         """
+        candidates = self.recall_all(query)
+        for c in candidates:
+            if c["similarity"] >= threshold:
+                return c
+        return None
+
+    def recall_all(self, query: str) -> list[dict]:
+        """
+        Return all stored sessions ranked by similarity, highest first.
+        No threshold applied — useful for debugging.
+        """
         import numpy as np
 
         query_emb = self._encode(query)
         rows = self.db.get_all_session_embeddings()
         if not rows:
-            return None
+            return []
 
-        best: Optional[dict] = None
-        best_score = 0.0
-
+        results = []
         for row in rows:
-            stored = np.frombuffer(row["task_embedding"], dtype=np.float32)
+            stored = np.frombuffer(bytes(row["task_embedding"]), dtype=np.float32)
             denom = np.linalg.norm(query_emb) * np.linalg.norm(stored)
             if denom == 0:
-                continue
-            score = float(np.dot(query_emb, stored) / denom)
-            if score > best_score and score >= threshold:
-                best_score = score
-                best = {
-                    "task_text": row["task_text"],
-                    "context_files": json.loads(row["context_files"]),
-                    "context_symbols": json.loads(row["context_symbols"]),
-                    "confidence": row["confidence"],
-                    "similarity": round(score, 4),
-                    "session_id": row["session_id"],
-                }
+                score = 0.0
+            else:
+                score = float(np.dot(query_emb, stored) / denom)
+            results.append({
+                "task_text": row["task_text"],
+                "context_files": json.loads(row["context_files"]),
+                "context_symbols": json.loads(row["context_symbols"]),
+                "confidence": row["confidence"],
+                "similarity": round(score, 4),
+                "session_id": row["session_id"],
+            })
 
-        return best
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return results
