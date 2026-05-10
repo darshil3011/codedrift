@@ -21,7 +21,8 @@ Reduce token usage by **50x** with CodeDrift.
 [![AST Token Reduction](https://img.shields.io/badge/AST_Token_Reduction-0969da?style=flat-square)](#ast-based-token-reduction)&nbsp;
 [![Session-aware Reads](https://img.shields.io/badge/Session--aware_Reads-d29922?style=flat-square)](#session-aware-reads--zero-re-read-waste)&nbsp;
 [![Cross-session Memory](https://img.shields.io/badge/Cross--session_Memory-8250df?style=flat-square)](#cross-session-memory)&nbsp;
-[![PII Redaction](https://img.shields.io/badge/PII_Redaction-cf222e?style=flat-square)](#pii-redaction)
+[![PII Redaction](https://img.shields.io/badge/PII_Redaction-cf222e?style=flat-square)](#pii-redaction)&nbsp;
+[![Analytics Dashboard](https://img.shields.io/badge/Analytics_Dashboard-1a1a2e?style=flat-square)](#analytics-dashboard)
 
 </div>
 
@@ -100,6 +101,7 @@ codedrift update
 
 | Tool | Replaces | Description |
 |---|---|---|
+| `codedrift_memory` | Starting from scratch | Recall the files and symbols that were useful for a similar past task |
 | `codedrift_search` | Grep, Glob | FTS5 search across symbol names, signatures, file paths, call sites |
 | `codedrift_resolve` | Read (full file) | Source code + callers + importers + tests + git history for one symbol |
 | `codedrift_overview` | Reading multiple files | Module map, entry points, test summary (~300 tokens) |
@@ -156,6 +158,8 @@ Memory uses vector embeddings (`all-MiniLM-L6-v2`) stored locally in the project
 ```bash
 pip install "codedrift[memory]"
 ```
+
+> Install all features at once: `pip install "codedrift[all]"`
 
 ---
 
@@ -244,6 +248,49 @@ codedrift redact watch private_person     # re-enable name redaction
 
 ---
 
+## Analytics dashboard
+
+CodeDrift ships a built-in analytics dashboard that shows how your AI agent is using the tools, how many tokens are being saved, and whether your index is healthy.
+
+**Start the dashboard:**
+
+```bash
+# Install dashboard dependencies (FastAPI + uvicorn)
+pip install "codedrift[dashboard]"
+
+# Start the API server
+codedrift serve --path .
+
+# In a second terminal, start the Vite dev server
+cd dashboard && npm install && npm run dev
+# → http://localhost:5173
+```
+
+**What's tracked:**
+
+| Section | Data shown |
+|---|---|
+| Index Health | File count, symbol count, top languages, last indexed time, freshness warning if index is > 24h old |
+| Tool Usage | Call count and tokens saved per tool, as a bar chart |
+| Activity Timeline | Daily tool calls over the last 30 days |
+| Token Savings | Cumulative savings area chart + per-tool breakdown |
+| Symbol Heatmap | Top 20 most-resolved symbols, coloured by kind (function / class / method) |
+| Memory Hit Rate | Donut chart of memory recall hits vs misses |
+| Response Size | Average output tokens per tool + 30-day trend sparklines |
+| Init / Update History | Table of every full and incremental index run |
+
+Every MCP tool call and every `codedrift init`/`update` run is persisted to the SQLite index automatically — no extra setup required beyond the install above.
+
+**Production build** (single server, no Vite):
+
+```bash
+cd dashboard && npm run build
+codedrift serve --path .
+# → http://localhost:8421 serves both API and built UI
+```
+
+---
+
 ## Measure token savings
 
 ```bash
@@ -265,6 +312,7 @@ codedrift search <query>  # FTS5 search from terminal
 codedrift resolve <sym>   # full symbol context from terminal
 codedrift overview        # project structural map
 codedrift status          # index stats (files, symbols, languages)
+codedrift serve           # start analytics dashboard API (port 8421)
 codedrift install-hook    # git post-commit hook for auto-update
 codedrift install-skill   # append tool-priority rules to CLAUDE.md
 codedrift mcp             # start MCP server (used by claude mcp add)

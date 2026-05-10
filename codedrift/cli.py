@@ -8,6 +8,7 @@ import click
 
 from .db import CodeDriftDB
 from . import formatter
+from . import analytics
 from .indexer import index_project
 from .search import search
 from .resolver import resolve
@@ -43,6 +44,7 @@ def init(path: str, quiet: bool):
     db = _get_db(project_dir)
     try:
         stats = index_project(project_dir, db, incremental=False, quiet=quiet)
+        analytics.log_index_event(db, incremental=False, stats=stats)
         if not quiet:
             click.echo(
                 f"Indexed {stats['files_indexed']} files, "
@@ -64,6 +66,7 @@ def update(path: str, quiet: bool):
     db = _get_db(project_dir)
     try:
         stats = index_project(project_dir, db, incremental=True, quiet=quiet)
+        analytics.log_index_event(db, incremental=True, stats=stats)
         if not quiet:
             click.echo(
                 f"Updated: {stats['files_indexed']} changed, "
@@ -417,6 +420,30 @@ def memory_clear(path):
     finally:
         db.close()
     click.echo("Session memory cleared.")
+
+
+# ── serve ─────────────────────────────────────────────────────────────────────
+
+@main.command()
+@click.option("--path", default=".", help="Project root.")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", default=8421, show_default=True)
+def serve(path: str, host: str, port: int):
+    """Start the analytics dashboard API server."""
+    try:
+        import uvicorn
+        from .api import app, init_api
+    except ImportError:
+        click.echo("Dashboard support requires: pip install codedrift[dashboard]", err=True)
+        sys.exit(1)
+    project_dir = str(Path(path).resolve())
+    db_path = Path(project_dir) / _DRIFT_DIR / _DB_NAME
+    if not db_path.exists():
+        click.echo("No index found. Run: codedrift init", err=True)
+        sys.exit(1)
+    init_api(db_path)
+    click.echo(f"Dashboard API → http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port)
 
 
 # ── mcp ───────────────────────────────────────────────────────────────────────

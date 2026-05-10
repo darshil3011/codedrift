@@ -1,5 +1,6 @@
 """MCP server — exposes CodeDrift tools to Claude Code and other agents."""
 
+import time as _time
 from pathlib import Path
 
 from .db import CodeDriftDB
@@ -11,6 +12,7 @@ from .overview import overview
 from .savings import TokenSavingsLedger, file_tokens
 from .memory import SessionMemory
 from . import redactor as _redactor
+from . import analytics as _analytics
 
 _DRIFT_DIR = ".codecodedrift"
 _DB_NAME = "index.db"
@@ -139,14 +141,26 @@ def run_mcp_server(project_dir: str):
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         db = _get_db(project_dir)
+        _t0 = _time.perf_counter()
+        matched_files = 0
+        grep_overhead = 0
+        result_count = 0
+        naive = 0
+        saved = 0
+
         try:
             if name == "codedrift_search":
                 query = arguments["query"]
                 limit = int(arguments.get("limit", 15))
                 results = search(db, query, limit=limit)
                 text = formatter.format_search(results, query)
+                # Accurate naive: grep output cost + all matched files
                 unique_files = {r.file for r in results}
-                naive = sum(file_tokens(str(Path(project_dir) / f)) for f in unique_files)
+                matched_files = len(unique_files)
+                grep_overhead = matched_files * 5
+                file_cost = sum(file_tokens(str(Path(project_dir) / f)) for f in unique_files)
+                naive = grep_overhead + file_cost
+                result_count = len(results)
                 saved = _savings.record("codedrift_search", text, naive)
                 text += _savings.format_footer(saved)
 
@@ -154,13 +168,22 @@ def run_mcp_server(project_dir: str):
                 symbol = arguments["symbol"]
                 result = resolve(db, symbol, project_dir)
                 text = formatter.format_resolve(result)
-                naive = file_tokens(str(Path(project_dir) / result.file)) if result.file else 0
+                # Accurate naive: definition + all caller files + test files + importers
+                all_files: set[str] = set()
+                if result.file:
+                    all_files.add(result.file)
+                all_files |= {c.file for c in result.callers}
+                all_files |= {c.file for c in result.tests}
+                all_files |= set(result.importers)
+                naive = sum(file_tokens(str(Path(project_dir) / f)) for f in all_files if f)
+                result_count = 1 if result.file else 0
                 saved = _savings.record("codedrift_resolve", text, naive)
                 text += _savings.format_footer(saved)
 
             elif name == "codedrift_overview":
                 text = formatter.format_overview(overview(db, project_dir))
                 naive = sum(file_tokens(str(Path(project_dir) / f)) for f in db.list_files())
+                result_count = len(db.list_files())
                 saved = _savings.record("codedrift_overview", text, naive)
                 text += _savings.format_footer(saved)
 
@@ -171,6 +194,7 @@ def run_mcp_server(project_dir: str):
                 text = _ledger.read_file(full_path)
                 text = _redactor.redact(text, full_path, project_dir)
                 naive = file_tokens(full_path)
+                result_count = 1
                 saved = _savings.record("codedrift_read", text, naive)
                 text += _savings.format_footer(saved)
 
@@ -198,11 +222,34 @@ def run_mcp_server(project_dir: str):
                             for s in match["context_symbols"]:
                                 lines.append(f"  {s}")
                         text = "\n".join(lines)
+                        saved = 1  # mark as hit for memory hit-rate tracking
                     else:
                         text = "No memory match found. Proceed with codedrift_search."
+                result_count = 1 if (match if name == "codedrift_memory" else True) else 0
 
             else:
                 text = f"Unknown tool: {name}"
+
+            duration_ms = (_time.perf_counter() - _t0) * 1000
+            output_tokens = len(text) // 4
+
+            # Persist analytics event (best-effort — never fail the tool call)
+            try:
+                _analytics.log_tool_call(
+                    db,
+                    tool_name=name,
+                    duration_ms=duration_ms,
+                    result_count=result_count,
+                    output_tokens=output_tokens,
+                    naive_tokens=naive,
+                    tokens_saved=saved,
+                    query=arguments.get("query") or arguments.get("symbol"),
+                    matched_files=matched_files,
+                    grep_overhead=grep_overhead,
+                )
+            except Exception:
+                pass
+
         finally:
             db.close()
 

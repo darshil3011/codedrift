@@ -18,7 +18,8 @@ codedrift = "codedrift.cli:main"
 mcp = ["mcp>=1.0"]
 memory = ["sentence-transformers>=2.0", "numpy>=1.24"]
 redact = ["onnxruntime>=1.18", "tokenizers>=0.19", "huggingface_hub>=0.24", "numpy>=1.24"]
-all = ["mcp>=1.0", "sentence-transformers>=2.0", "numpy>=1.24", "onnxruntime>=1.18", "tokenizers>=0.19", "huggingface_hub>=0.24"]
+dashboard = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+all = ["mcp>=1.0", "sentence-transformers>=2.0", "numpy>=1.24", "onnxruntime>=1.18", "tokenizers>=0.19", "huggingface_hub>=0.24", "fastapi>=0.110", "uvicorn[standard]>=0.29"]
 dev = ["pytest>=7.0", "pytest-cov"]
 
 [build-system]
