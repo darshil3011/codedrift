@@ -122,7 +122,7 @@ def _make_app():
             db.close()
 
     # ── serve built dashboard in production ───────────────────────────────────
-    _dist = Path(__file__).parent.parent / "dashboard" / "dist"
+    _dist = Path(__file__).parent / "_dashboard"
     if _dist.exists():
         app.mount("/", StaticFiles(directory=str(_dist), html=True), name="static")
 

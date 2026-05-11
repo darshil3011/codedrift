@@ -82,7 +82,7 @@ export function TokenSavings() {
           <XAxis dataKey="date" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} label={{ value: 'K tokens', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} />
           <Tooltip
-            formatter={(v: number, name: string) =>
+            formatter={(v, name) =>
               name === 'cumulative' ? [`${v}K tokens`, 'Cumulative Saved'] : [`$${v}`, 'Cost Saved']
             }
           />

@@ -255,15 +255,12 @@ CodeDrift ships a built-in analytics dashboard that shows how your AI agent is u
 **Start the dashboard:**
 
 ```bash
-# Install dashboard dependencies (FastAPI + uvicorn)
+# Install dashboard dependencies (FastAPI + uvicorn, pre-built UI included)
 pip install "codedrift[dashboard]"
 
-# Start the API server
-codedrift serve --path .
-
-# In a second terminal, start the Vite dev server
-cd dashboard && npm install && npm run dev
-# → http://localhost:5173
+# One command — auto-detects project root, opens browser automatically
+codedrift dashboard
+# → http://localhost:8421
 ```
 
 **What's tracked:**
@@ -281,12 +278,10 @@ cd dashboard && npm install && npm run dev
 
 Every MCP tool call and every `codedrift init`/`update` run is persisted to the SQLite index automatically — no extra setup required beyond the install above.
 
-**Production build** (single server, no Vite):
+For API-only access (CI / headless servers):
 
 ```bash
-cd dashboard && npm run build
-codedrift serve --path .
-# → http://localhost:8421 serves both API and built UI
+codedrift api             # no browser, no UI, just the JSON endpoints
 ```
 
 ---
@@ -312,7 +307,8 @@ codedrift search <query>  # FTS5 search from terminal
 codedrift resolve <sym>   # full symbol context from terminal
 codedrift overview        # project structural map
 codedrift status          # index stats (files, symbols, languages)
-codedrift serve           # start analytics dashboard API (port 8421)
+codedrift dashboard       # start full analytics dashboard, opens browser
+codedrift api             # start API-only server (no UI, for scripting/CI)
 codedrift install-hook    # git post-commit hook for auto-update
 codedrift install-skill   # append tool-priority rules to CLAUDE.md
 codedrift mcp             # start MCP server (used by claude mcp add)

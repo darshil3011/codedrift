@@ -19,7 +19,7 @@ export function ResponseSize() {
         <BarChart data={summary} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
           <XAxis dataKey="tool" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 11 }} label={{ value: 'Avg tokens', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} />
-          <Tooltip formatter={(v: number) => [v, 'Avg output tokens']} />
+          <Tooltip formatter={(v) => [v, 'Avg output tokens']} />
           <Bar dataKey="avg" name="Avg Output Tokens" fill="#6366f1" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -31,7 +31,7 @@ export function ResponseSize() {
               <ResponsiveContainer width="100%" height={60}>
                 <LineChart data={r.trend}>
                   <Line type="monotone" dataKey="avg" stroke="#6366f1" dot={false} strokeWidth={1.5} />
-                  <Tooltip formatter={(v: number) => [`${Math.round(v)} tokens`, '']} labelFormatter={l => l.slice(5)} />
+                  <Tooltip formatter={(v) => [`${Math.round(Number(v))} tokens`, '']} labelFormatter={l => String(l).slice(5)} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

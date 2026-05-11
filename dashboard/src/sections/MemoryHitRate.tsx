@@ -24,7 +24,7 @@ export function MemoryHitRate() {
             <Pie data={chart} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}>
               {chart.map((entry, i) => <Cell key={i} fill={entry.color} />)}
             </Pie>
-            <Tooltip formatter={(v: number) => [v, '']} />
+            <Tooltip formatter={(v) => [v, '']} />
           </PieChart>
         </ResponsiveContainer>
         <div>

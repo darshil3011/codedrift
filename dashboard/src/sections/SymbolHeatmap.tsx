@@ -32,7 +32,7 @@ export function SymbolHeatmap() {
         <BarChart layout="vertical" data={chart} margin={{ top: 4, right: 32, left: 80, bottom: 4 }}>
           <XAxis type="number" tick={{ fontSize: 11 }} />
           <YAxis type="category" dataKey="symbol" tick={{ fontSize: 11 }} width={80} />
-          <Tooltip formatter={(v: number) => [v, 'Calls']} labelFormatter={(l: string) => `Symbol: ${l}`} />
+          <Tooltip formatter={(v) => [v, 'Calls']} labelFormatter={(l) => `Symbol: ${l}`} />
           <Bar dataKey="call_count" name="Calls" radius={[0, 4, 4, 0]}>
             {chart.map((entry, i) => (
               <Cell key={i} fill={KIND_COLOR[entry.kind ?? ''] ?? DEFAULT_COLOR} />

@@ -22,6 +22,15 @@ _DB_NAME = "index.db"
 _ledger = DiffLedger()
 
 
+def _find_project_root(start: str = ".") -> Path | None:
+    """Walk up from `start` until we find .codecodedrift/index.db."""
+    p = Path(start).resolve()
+    for candidate in [p, *p.parents]:
+        if (candidate / _DRIFT_DIR / _DB_NAME).exists():
+            return candidate
+    return None
+
+
 def _get_db(project_dir: str) -> CodeDriftDB:
     db_path = Path(project_dir) / _DRIFT_DIR / _DB_NAME
     return CodeDriftDB(db_path).connect()
@@ -422,27 +431,55 @@ def memory_clear(path):
     click.echo("Session memory cleared.")
 
 
-# ── serve ─────────────────────────────────────────────────────────────────────
+# ── dashboard ─────────────────────────────────────────────────────────────────
 
-@main.command()
-@click.option("--path", default=".", help="Project root.")
+@main.command("dashboard")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", default=8421, show_default=True)
-def serve(path: str, host: str, port: int):
-    """Start the analytics dashboard API server."""
+@click.option("--no-browser", is_flag=True, help="Don't open the browser automatically.")
+def dashboard_cmd(path: str | None, host: str, port: int, no_browser: bool):
+    """Start the analytics dashboard (API + UI). Auto-detects project root."""
     try:
         import uvicorn
         from .api import app, init_api
     except ImportError:
         click.echo("Dashboard support requires: pip install codedrift[dashboard]", err=True)
         sys.exit(1)
-    project_dir = str(Path(path).resolve())
-    db_path = Path(project_dir) / _DRIFT_DIR / _DB_NAME
-    if not db_path.exists():
-        click.echo("No index found. Run: codedrift init", err=True)
+    root = Path(path).resolve() if path else _find_project_root()
+    if not root:
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
         sys.exit(1)
-    init_api(db_path)
-    click.echo(f"Dashboard API → http://{host}:{port}")
+    init_api(root / _DRIFT_DIR / _DB_NAME)
+    url = f"http://{host}:{port}"
+    click.echo(f"CodeDrift Dashboard → {url}")
+    if not no_browser:
+        import threading
+        import webbrowser
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host=host, port=port)
+
+
+# ── api (API-only server) ─────────────────────────────────────────────────────
+
+@main.command("api")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", default=8421, show_default=True)
+def api_cmd(path: str | None, host: str, port: int):
+    """Start the analytics API server only (no UI, no browser). Auto-detects project root."""
+    try:
+        import uvicorn
+        from .api import app, init_api
+    except ImportError:
+        click.echo("Dashboard support requires: pip install codedrift[dashboard]", err=True)
+        sys.exit(1)
+    root = Path(path).resolve() if path else _find_project_root()
+    if not root:
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
+        sys.exit(1)
+    init_api(root / _DRIFT_DIR / _DB_NAME)
+    click.echo(f"CodeDrift API → http://{host}:{port}/api")
     uvicorn.run(app, host=host, port=port)
 
 
