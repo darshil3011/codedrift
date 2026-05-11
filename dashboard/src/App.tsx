@@ -18,13 +18,13 @@ function Dashboard() {
         <h1 className="text-xl font-bold text-gray-900">CodeDrift Analytics</h1>
       </header>
       <main className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-10">
+        <TokenSavings />
+        <div className="border-t border-gray-100" />
         <IndexHealth />
         <div className="border-t border-gray-100" />
         <ToolUsage />
         <div className="border-t border-gray-100" />
         <ActivityTimeline />
-        <div className="border-t border-gray-100" />
-        <TokenSavings />
         <div className="border-t border-gray-100" />
         <SymbolHeatmap />
         <div className="border-t border-gray-100" />
