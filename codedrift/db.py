@@ -113,6 +113,17 @@ CREATE TABLE IF NOT EXISTS session_memory (
     created_at REAL NOT NULL,
     session_id TEXT
 );
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+    id          INTEGER PRIMARY KEY,
+    event_type  TEXT NOT NULL,
+    timestamp   REAL NOT NULL,
+    duration_ms REAL,
+    metadata    TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_type      ON analytics_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp);
 """
 
 
@@ -364,3 +375,20 @@ class CodeDriftDB:
     def clear_session_memory(self):
         with self._conn:
             self._conn.execute("DELETE FROM session_memory")
+
+    # ── analytics ─────────────────────────────────────────────────────────────
+
+    def insert_analytics_event(
+        self,
+        event_type: str,
+        timestamp: float,
+        duration_ms: Optional[float],
+        metadata_json: str,
+    ) -> int:
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO analytics_events (event_type, timestamp, duration_ms, metadata) "
+                "VALUES (?, ?, ?, ?)",
+                (event_type, timestamp, duration_ms, metadata_json),
+            )
+        return cur.lastrowid
