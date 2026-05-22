@@ -39,7 +39,10 @@ class JavaScriptAdapter(LanguageAdapter):
         return get_parser(lang)
 
     def parse_file(self, source: bytes, filepath: str):
-        return self._parser_for(filepath).parse(source)
+        parser = self._parser_for(filepath)
+        parse_fn = getattr(parser, "parse_bytes", parser.parse)
+        from .base import _wrap_tree
+        return _wrap_tree(parse_fn(source), source)
 
     def extract_functions(self, tree, source_lines: List[str], filepath: str) -> List[Symbol]:
         symbols = []
