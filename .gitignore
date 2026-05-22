@@ -2,7 +2,10 @@
 .claude/
 CLAUDE.md
 CODEDRIFT_LAYER3_PLAN.md
-
+PLAN.MD
+SUMMARY.md
+MASTER.md
+instructions.md
 # Runtime data
 .codecodedrift/
 
@@ -17,3 +20,5 @@ __pycache__/
 .ruff_cache/
 
 **/node_modules/**
+# Claude Differ sentinel
+.claude-writing

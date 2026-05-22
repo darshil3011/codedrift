@@ -8,6 +8,7 @@ import click
 
 from .db import CodeDriftDB
 from . import formatter
+from . import analytics
 from .indexer import index_project
 from .search import search
 from .resolver import resolve
@@ -19,6 +20,15 @@ _DRIFT_DIR = ".codecodedrift"
 _DB_NAME = "index.db"
 
 _ledger = DiffLedger()
+
+
+def _find_project_root(start: str = ".") -> Path | None:
+    """Walk up from `start` until we find .codecodedrift/index.db."""
+    p = Path(start).resolve()
+    for candidate in [p, *p.parents]:
+        if (candidate / _DRIFT_DIR / _DB_NAME).exists():
+            return candidate
+    return None
 
 
 def _get_db(project_dir: str) -> CodeDriftDB:
@@ -43,6 +53,7 @@ def init(path: str, quiet: bool):
     db = _get_db(project_dir)
     try:
         stats = index_project(project_dir, db, incremental=False, quiet=quiet)
+        analytics.log_index_event(db, incremental=False, stats=stats)
         if not quiet:
             click.echo(
                 f"Indexed {stats['files_indexed']} files, "
@@ -64,6 +75,7 @@ def update(path: str, quiet: bool):
     db = _get_db(project_dir)
     try:
         stats = index_project(project_dir, db, incremental=True, quiet=quiet)
+        analytics.log_index_event(db, incremental=True, stats=stats)
         if not quiet:
             click.echo(
                 f"Updated: {stats['files_indexed']} changed, "
@@ -417,6 +429,58 @@ def memory_clear(path):
     finally:
         db.close()
     click.echo("Session memory cleared.")
+
+
+# ── dashboard ─────────────────────────────────────────────────────────────────
+
+@main.command("dashboard")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", default=8421, show_default=True)
+@click.option("--no-browser", is_flag=True, help="Don't open the browser automatically.")
+def dashboard_cmd(path: str | None, host: str, port: int, no_browser: bool):
+    """Start the analytics dashboard (API + UI). Auto-detects project root."""
+    try:
+        import uvicorn
+        from .api import app, init_api
+    except ImportError:
+        click.echo("Dashboard support requires: pip install codedrift[dashboard]", err=True)
+        sys.exit(1)
+    root = Path(path).resolve() if path else _find_project_root()
+    if not root:
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
+        sys.exit(1)
+    init_api(root / _DRIFT_DIR / _DB_NAME)
+    url = f"http://{host}:{port}"
+    click.echo(f"CodeDrift Dashboard → {url}")
+    if not no_browser:
+        import threading
+        import webbrowser
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    uvicorn.run(app, host=host, port=port)
+
+
+# ── api (API-only server) ─────────────────────────────────────────────────────
+
+@main.command("api")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", default=8421, show_default=True)
+def api_cmd(path: str | None, host: str, port: int):
+    """Start the analytics API server only (no UI, no browser). Auto-detects project root."""
+    try:
+        import uvicorn
+        from .api import app, init_api
+    except ImportError:
+        click.echo("Dashboard support requires: pip install codedrift[dashboard]", err=True)
+        sys.exit(1)
+    root = Path(path).resolve() if path else _find_project_root()
+    if not root:
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
+        sys.exit(1)
+    init_api(root / _DRIFT_DIR / _DB_NAME)
+    click.echo(f"CodeDrift API → http://{host}:{port}/api")
+    uvicorn.run(app, host=host, port=port)
 
 
 # ── mcp ───────────────────────────────────────────────────────────────────────
