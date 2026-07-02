@@ -62,7 +62,7 @@ the index is fast, free to build, and requires zero maintenance.
 
 ```bash
 # 1. Install
-pip install "git+https://github.com/darshil3011/codedrift[mcp]"
+pip install "codedrift[mcp] @ git+https://github.com/darshil3011/codedrift.git"
 
 # 2. Index your project
 cd /path/to/your/project

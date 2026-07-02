@@ -19,5 +19,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+**/node_modules/**
 # Claude Differ sentinel
 .claude-writing
