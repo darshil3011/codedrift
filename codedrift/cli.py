@@ -31,8 +31,58 @@ def _find_project_root(start: str = ".") -> Path | None:
     return None
 
 
-def _get_db(project_dir: str) -> CodeDriftDB:
+def _find_repo_root(start: str = ".") -> Path | None:
+    """Walk up from `start` until we find a `.git` entry (dir or worktree file)."""
+    p = Path(start).resolve()
+    for candidate in [p, *p.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _resolve_existing_root(path: str | None) -> Path:
+    """Resolve which project's index to use.
+
+    An explicit --path always wins. Otherwise search upward from the current
+    directory for an already-initialized project, so running a command from a
+    subdirectory finds the real index instead of silently operating on (or
+    creating) an unrelated one there. Fails loudly if nothing is found —
+    never falls back to creating a stray index.
+    """
+    if path is not None:
+        return Path(path).resolve()
+    root = _find_project_root()
+    if root is None:
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
+        sys.exit(1)
+    return root
+
+
+def _resolve_index_root(path: str | None) -> Path:
+    """Resolve where a fresh or refreshed index should live.
+
+    An explicit --path always wins. Otherwise: reuse an already-initialized
+    ancestor if one exists (so `init`/`update` re-run from a subdirectory
+    target the same index rather than fragmenting it); else use the nearest
+    git repo root, so the index defaults to the project root instead of
+    wherever the command happened to be run from; else fall back to cwd.
+    """
+    if path is not None:
+        return Path(path).resolve()
+    existing = _find_project_root()
+    if existing is not None:
+        return existing
+    repo_root = _find_repo_root()
+    if repo_root is not None:
+        return repo_root
+    return Path(".").resolve()
+
+
+def _get_db(project_dir: str, create: bool = False) -> CodeDriftDB:
     db_path = Path(project_dir) / _DRIFT_DIR / _DB_NAME
+    if not create and not db_path.exists():
+        click.echo("No .codecodedrift/index.db found. Run: codedrift init", err=True)
+        sys.exit(1)
     return CodeDriftDB(db_path).connect()
 
 
@@ -45,12 +95,21 @@ def main():
 # ── init ─────────────────────────────────────────────────────────────────────
 
 @main.command()
-@click.option("--path", default=".", help="Project root to index.")
+@click.option(
+    "--path",
+    default=None,
+    help="Project root to index (auto-detected via an existing index or the "
+    "nearest git repo root if omitted).",
+)
 @click.option("--quiet", is_flag=True)
-def init(path: str, quiet: bool):
+def init(path: str | None, quiet: bool):
     """Index a project (full scan, < 3 seconds for 500 files)."""
-    project_dir = str(Path(path).resolve())
-    db = _get_db(project_dir)
+    cwd = Path(".").resolve()
+    resolved = _resolve_index_root(path)
+    project_dir = str(resolved)
+    if path is None and resolved != cwd and not quiet:
+        click.echo(f"Project root detected: {project_dir}")
+    db = _get_db(project_dir, create=True)
     try:
         stats = index_project(project_dir, db, incremental=False, quiet=quiet)
         analytics.log_index_event(db, incremental=False, stats=stats)
@@ -67,12 +126,17 @@ def init(path: str, quiet: bool):
 # ── update ────────────────────────────────────────────────────────────────────
 
 @main.command()
-@click.option("--path", default=".", help="Project root.")
+@click.option(
+    "--path",
+    default=None,
+    help="Project root (auto-detected via an existing index or the nearest "
+    "git repo root if omitted).",
+)
 @click.option("--quiet", is_flag=True)
-def update(path: str, quiet: bool):
+def update(path: str | None, quiet: bool):
     """Re-index only changed files (incremental, < 0.5s typical)."""
-    project_dir = str(Path(path).resolve())
-    db = _get_db(project_dir)
+    project_dir = str(_resolve_index_root(path))
+    db = _get_db(project_dir, create=True)
     try:
         stats = index_project(project_dir, db, incremental=True, quiet=quiet)
         analytics.log_index_event(db, incremental=True, stats=stats)
@@ -90,13 +154,13 @@ def update(path: str, quiet: bool):
 
 @main.command()
 @click.argument("query", nargs=-1, required=True)
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--limit", default=15, show_default=True)
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 def search_cmd(query, path, limit, as_json):
     """Search codebase by keywords (FTS5). PRIMARY COMMAND."""
     q = " ".join(query)
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         results = search(db, q, limit=limit)
@@ -112,11 +176,11 @@ main.add_command(search_cmd, name="search")
 
 @main.command()
 @click.argument("symbol")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--json", "as_json", is_flag=True)
 def resolve_cmd(symbol, path, as_json):
     """Full context for a symbol: source, callers, tests, git."""
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         result = resolve(db, symbol, project_dir)
@@ -131,11 +195,11 @@ main.add_command(resolve_cmd, name="resolve")
 # ── overview ──────────────────────────────────────────────────────────────────
 
 @main.command()
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--json", "as_json", is_flag=True)
 def overview_cmd(path, as_json):
     """Project structural map: modules, files, entry points."""
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         text = overview(db, project_dir)
@@ -150,15 +214,12 @@ main.add_command(overview_cmd, name="overview")
 # ── status ────────────────────────────────────────────────────────────────────
 
 @main.command()
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--json", "as_json", is_flag=True)
 def status(path, as_json):
     """Show index statistics."""
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db_path = Path(project_dir) / _DRIFT_DIR / _DB_NAME
-    if not db_path.exists():
-        click.echo("No index found. Run: codedrift init")
-        sys.exit(1)
     db = _get_db(project_dir)
     try:
         stats = db.stats()
@@ -200,10 +261,15 @@ def install_hook(path):
 @main.command("install-skill")
 @click.option("--path", default=".", help="Project root (CLAUDE.md is written here).")
 def install_skill(path):
-    """Append CodeDrift tool-priority rules to CLAUDE.md."""
+    """Write or refresh CodeDrift tool-priority rules in CLAUDE.md."""
     from .skill import generate_skill_file
-    out = generate_skill_file(path)
-    click.echo(f"Rules written to: {out}")
+    out, status = generate_skill_file(path)
+    messages = {
+        "created": f"Rules written to: {out}",
+        "updated": f"Rules were out of date — refreshed in place: {out}",
+        "unchanged": f"Rules already up to date: {out}",
+    }
+    click.echo(messages[status])
 
 
 # ── redact ───────────────────────────────────────────────────────────────────
@@ -215,11 +281,11 @@ def redact():
 
 
 @redact.command("enable")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_enable(path):
     """Enable PII redaction for this project."""
     from .redactor import load_config, save_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     cfg.enabled = True
     save_config(project_dir, cfg)
@@ -227,11 +293,11 @@ def redact_enable(path):
 
 
 @redact.command("disable")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_disable(path):
     """Disable PII redaction."""
     from .redactor import load_config, save_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     cfg.enabled = False
     save_config(project_dir, cfg)
@@ -239,11 +305,11 @@ def redact_disable(path):
 
 
 @redact.command("status")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_status(path):
     """Show current redaction configuration."""
     from .redactor import load_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     click.echo(f"Enabled:         {cfg.enabled}")
     click.echo(f"Entity types:    {', '.join(cfg.entity_types)}")
@@ -253,11 +319,11 @@ def redact_status(path):
 
 @redact.command("allow")
 @click.argument("pattern")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_allow(pattern, path):
     """Add a regex pattern to the allow-list (never redacted)."""
     from .redactor import load_config, save_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     if pattern not in cfg.allow_patterns:
         cfg.allow_patterns.append(pattern)
@@ -267,11 +333,11 @@ def redact_allow(pattern, path):
 
 @redact.command("ignore")
 @click.argument("entity_type")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_ignore(entity_type, path):
     """Stop redacting an entity type (e.g. private_person)."""
     from .redactor import load_config, save_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     if entity_type in cfg.entity_types:
         cfg.entity_types.remove(entity_type)
@@ -281,11 +347,11 @@ def redact_ignore(entity_type, path):
 
 @redact.command("watch")
 @click.argument("entity_type")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def redact_watch(entity_type, path):
     """Add an entity type back to detection."""
     from .redactor import load_config, save_config
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     cfg = load_config(project_dir)
     if entity_type not in cfg.entity_types:
         cfg.entity_types.append(entity_type)
@@ -341,7 +407,7 @@ def memory_record(path, session, outcome):
 
 @memory.command("recall")
 @click.argument("query", nargs=-1, required=True)
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.option("--threshold", default=0.40, show_default=True, type=float)
 @click.option("--verbose", "-v", is_flag=True, help="Show all sessions with their scores.")
 def memory_recall(query, path, threshold, verbose):
@@ -349,7 +415,7 @@ def memory_recall(query, path, threshold, verbose):
     from .memory import SessionMemory
 
     q = " ".join(query)
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         mem = SessionMemory(db)
@@ -389,13 +455,13 @@ def memory_recall(query, path, threshold, verbose):
 
 
 @memory.command("list")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def memory_list(path):
     """Show all stored sessions."""
     import datetime
     import json as _json
 
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         rows = db.list_session_memory()
@@ -418,11 +484,11 @@ def memory_list(path):
 
 
 @memory.command("clear")
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 @click.confirmation_option(prompt="Clear all stored session memory?")
 def memory_clear(path):
     """Delete all stored session memory."""
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     db = _get_db(project_dir)
     try:
         db.clear_session_memory()
@@ -486,7 +552,7 @@ def api_cmd(path: str | None, host: str, port: int):
 # ── mcp ───────────────────────────────────────────────────────────────────────
 
 @main.command()
-@click.option("--path", default=".", help="Project root.")
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
 def mcp(path):
     """Start the MCP server for Claude Code / agent integration."""
     try:
@@ -494,5 +560,39 @@ def mcp(path):
     except ImportError:
         click.echo("MCP support requires: pip install codedrift[mcp]", err=True)
         sys.exit(1)
-    project_dir = str(Path(path).resolve())
+    project_dir = str(_resolve_existing_root(path))
     run_mcp_server(project_dir)
+
+
+# ── doctor ────────────────────────────────────────────────────────────────────
+
+@main.command()
+@click.option("--path", default=None, help="Project root (auto-detected if omitted).")
+def doctor(path):
+    """Diagnose whether this project is actually wired up for Claude Code.
+
+    Checks the index, MCP registration in ~/.claude.json, CLAUDE.md's
+    tool-priority rules, and the git auto-update hook — independently of
+    whether the index itself looks healthy, since none of those are implied
+    by `codedrift init` having been run.
+    """
+    from .doctor import run_doctor
+
+    if path is not None:
+        project_dir = str(Path(path).resolve())
+    else:
+        project_dir = str(_find_project_root() or _find_repo_root() or Path(".").resolve())
+
+    click.echo(f"══ CodeDrift doctor: {project_dir} ══\n")
+    all_ok = True
+    for name, ok, detail in run_doctor(project_dir):
+        marker = "ok" if ok else "FAIL"
+        click.echo(f"[{marker:>4}] {name}: {detail}")
+        all_ok = all_ok and ok
+
+    click.echo()
+    if all_ok:
+        click.echo("Everything looks wired up correctly.")
+    else:
+        click.echo("Some checks failed — see the commands above.")
+        sys.exit(1)

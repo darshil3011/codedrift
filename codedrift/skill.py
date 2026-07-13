@@ -1,8 +1,12 @@
 """Write CodeDrift tool-priority rules into CLAUDE.md."""
 
+import re
 from pathlib import Path
 
-_SKILL_CONTENT = """\
+_START = "<!-- codedrift:skill:start -->"
+_END = "<!-- codedrift:skill:end -->"
+
+_SKILL_BODY = """\
 # CodeDrift — Scope-Aware Code Intelligence
 
 ## Overview
@@ -47,13 +51,32 @@ claude mcp add --scope local codedrift -- codedrift mcp
 ```
 """
 
+_SKILL_CONTENT = f"{_START}\n{_SKILL_BODY}{_END}\n"
 
-def generate_skill_file(output_dir: str) -> Path:
-    """Append CodeDrift rules to CLAUDE.md (creates it if absent)."""
+_BLOCK_RE = re.compile(re.escape(_START) + r".*?" + re.escape(_END) + r"\n?", re.DOTALL)
+
+
+def generate_skill_file(output_dir: str) -> tuple[Path, str]:
+    """Install or refresh CodeDrift's rules in CLAUDE.md.
+
+    The rules are wrapped in `<!-- codedrift:skill:start/end -->` markers so a
+    stale block from an older version of this function can be found and
+    replaced in place, rather than silently skipped or duplicated.
+
+    Returns (path, status) where status is "created", "updated", or "unchanged".
+    """
     out = Path(output_dir) / "CLAUDE.md"
     existing = out.read_text() if out.exists() else ""
-    if "codedrift_search" in existing:
-        return out  # already installed
-    separator = "\n\n---\n\n" if existing.strip() else ""
-    out.write_text(existing + separator + _SKILL_CONTENT)
-    return out
+
+    match = _BLOCK_RE.search(existing)
+    if match is None:
+        separator = "\n\n---\n\n" if existing.strip() else ""
+        out.write_text(existing + separator + _SKILL_CONTENT)
+        return out, "created"
+
+    if match.group(0).strip() == _SKILL_CONTENT.strip():
+        return out, "unchanged"
+
+    updated = existing[: match.start()] + _SKILL_CONTENT + existing[match.end():]
+    out.write_text(updated)
+    return out, "updated"

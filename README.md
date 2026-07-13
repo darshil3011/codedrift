@@ -74,10 +74,22 @@ claude mcp add --scope local codedrift -- codedrift mcp
 # 4. Write tool-priority rules to CLAUDE.md
 codedrift install-skill
 
-# 5. Start a new Claude Code session — done
+# 5. Verify everything is actually wired up (index, MCP registration,
+#    CLAUDE.md, auto-update hook) before trusting it
+codedrift doctor
+
+# 6. Start a new Claude Code session — done
 ```
 
 > Add `.codecodedrift/` to your `.gitignore`.
+
+`codedrift init` and every other command auto-detect the project root (an
+already-indexed ancestor directory, else the nearest git repo root) if you
+omit `--path` — so the index always lands in one consistent place even if
+you run a command from a subdirectory. Step 3 (`claude mcp add`) is the one
+step CodeDrift can't do for you and can't verify was skipped from inside a
+session — that's exactly what `codedrift doctor` checks for. Run it any time
+you're not sure whether Claude Code will actually pick up CodeDrift's tools.
 
 ---
 
@@ -307,6 +319,7 @@ codedrift search <query>  # FTS5 search from terminal
 codedrift resolve <sym>   # full symbol context from terminal
 codedrift overview        # project structural map
 codedrift status          # index stats (files, symbols, languages)
+codedrift doctor          # verify index + MCP registration + CLAUDE.md + hook are all wired up
 codedrift dashboard       # start full analytics dashboard, opens browser
 codedrift api             # start API-only server (no UI, for scripting/CI)
 codedrift install-hook    # git post-commit hook for auto-update
